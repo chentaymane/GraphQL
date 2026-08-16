@@ -106,3 +106,20 @@ input:focus {
     font-size: 16px;
     color: #555;
 }
+
+#logout-btn {
+    width: 100%;
+    padding: 12px;
+    background: #e53e3e;
+    color: #fff;
+    border: none;
+    border-radius: 6px;
+    font-size: 16px;
+    cursor: pointer;
+    transition: background 0.3s;
+    margin-top: 10px;
+}
+
+#logout-btn:hover {
+    background: #c53030;
+}

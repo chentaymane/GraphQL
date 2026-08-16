@@ -22,8 +22,14 @@ function showProfile() {
     document.getElementById('profile-section').style.display = 'block';
 }
 
+function Logout() {
+    localStorage.removeItem('jwt');
+    window.location.reload();
+}
+
 if (localStorage.getItem('jwt')) {
     showProfile();
 }
 
 document.getElementById('login-btn').addEventListener('click', Login);
+document.getElementById('logout-btn').addEventListener('click', Logout);
