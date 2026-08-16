@@ -4,14 +4,38 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Profile</title>
+    <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <h2 id="login"></h2>
-    <img id="avatar" alt="Description de l'image">
-    <p>XP: <span id="xp"></span></p>
-    <p id="passfail"></p>
-    <p id="audit"></p>
+    <section id="login-section">
+        <form id="login-form">
+            <h2>Login</h2>
 
+            <div id="identifier-group">
+                <label for="identifier">Username or Email</label>
+                <input type="text" id="identifier">
+            </div>
+
+            <div id="password-group">
+                <label for="password">Password</label>
+                <input type="password" id="password">
+            </div>
+
+            <button id="login-btn" type="button">Log in</button>
+
+            <p id="error-msg"></p>
+        </form>
+    </section>
+
+    <section id="profile-section">
+        <h2 id="login"></h2>
+        <img id="avatar" alt="Profile picture">
+        <p>XP: <span id="xp"></span></p>
+        <p id="passfail"></p>
+        <p id="audit"></p>
+    </section>
+
+    <script src="auth.js"></script>
     <script src="querys.js"></script>
 </body>
 </html>

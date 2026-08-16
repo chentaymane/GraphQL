@@ -14,6 +14,16 @@ async function Login() {
     }
    const token = await res.json()
     localStorage.setItem('jwt', token)
-    window.location.href = 'index.html'
+    showProfile();
 }
+
+function showProfile() {
+    document.getElementById('login-section').style.display = 'none';
+    document.getElementById('profile-section').style.display = 'block';
+}
+
+if (localStorage.getItem('jwt')) {
+    showProfile();
+}
+
 document.getElementById('login-btn').addEventListener('click', Login);
