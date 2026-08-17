@@ -14,6 +14,7 @@ async function Login() {
     }
    const token = await res.json()
     localStorage.setItem('jwt', token)
+    loadProfile();
     showProfile();
 }
 
@@ -31,5 +32,11 @@ if (localStorage.getItem('jwt')) {
     showProfile();
 }
 
-document.getElementById('login-btn').addEventListener('click', Login);
+document.getElementById('login-btn').addEventListener('click', async () => {
+    try {
+        await Login();
+    } catch (err) {
+        document.getElementById('error-msg').textContent = err.message;
+    }
+});
 document.getElementById('logout-btn').addEventListener('click', Logout);

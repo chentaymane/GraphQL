@@ -118,10 +118,14 @@ async function getAuditRatio() {
   }
 }
 
-if (localStorage.getItem('jwt')) {
+function loadProfile() {
     getUserInfo();
     getAvatar();
     getXp();
     getPassFail();
     getAuditRatio();
+}
+
+if (localStorage.getItem('jwt')) {
+    loadProfile();
 }
