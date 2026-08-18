@@ -15,3 +15,26 @@ function drawPassFailGraph(passed, failed) {
         <rect x="100" y="${failedY}" width="50" height="${failedHeight}" fill="red" />
     `;
 }
+function calculateCumulative(transactions) {
+    let total = 0;
+    const cumulative = [];
+    for (const t of transactions) {
+        total = total + t.amount;
+        cumulative.push(total);
+    }
+    return cumulative;
+}
+function drawXpOverTimeGraph(cumulative) {
+    const svg = document.getElementById('xp-graph');
+    const width = 300;
+    const height = 150;
+    const maxValue = Math.max(...cumulative);
+
+    const points = cumulative.map((value, index) => {
+        const x = (index / (cumulative.length - 1)) * width;
+        const y = height - (value / maxValue) * height;
+        return `${x},${y}`;
+    }).join(' ');
+
+    svg.innerHTML = `<polyline points="${points}" fill="none" stroke="#667eea" stroke-width="2" />`;
+}

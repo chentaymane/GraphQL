@@ -120,12 +120,36 @@ async function getAuditRatio() {
   }
 }
 
+async function getXpOverTime() {
+  const query = `
+  {
+    transaction(where: { type: { _eq: "xp" } }, order_by: { createdAt: asc }) {
+      amount
+      createdAt
+    }
+  }
+  `;
+  try {
+    const data = await queryGraphQL(query);
+    const transactions = data.transaction;
+
+    const cumulative = calculateCumulative(transactions);
+    drawXpOverTimeGraph(cumulative);    
+    //console.log(cumulative);              
+    return { transactions, cumulative };
+  } catch (err) {
+    console.error('Failed to load XP over time:', err);
+    return { transactions: [], cumulative: [] };
+  }
+}
+
 function loadProfile() {
     getUserInfo();
     getAvatar();
     getXp();
     getPassFail();
     getAuditRatio();
+    getXpOverTime();   
 }
 
 if (localStorage.getItem('jwt')) {
