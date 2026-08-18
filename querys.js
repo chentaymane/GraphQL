@@ -90,6 +90,8 @@ async function getPassFail() {
     const passed = data.passed.aggregate.count;
     const failed = data.failed.aggregate.count;
     passFailEl.textContent = `Passed: ${passed} / Failed: ${failed}`;
+    drawPassFailGraph(passed, failed);
+    drawPassFailGraph(passed, failed);
   } catch (err) {
     console.error('Failed to load pass/fail:', err);
   }
