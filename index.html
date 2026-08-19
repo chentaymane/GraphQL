@@ -1,46 +1,151 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Profile</title>
+    <title>My Profile</title>
     <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+    <!-- ===================== LOGIN ===================== -->
     <section id="login-section">
         <form id="login-form">
-            <h2>Login</h2>
+            <h1 class="brand">my<span>profile</span></h1>
+            <h2>Sign in</h2>
+            <p class="hint">Use your username or your email address</p>
 
             <div id="identifier-group">
                 <label for="identifier">Username or Email</label>
-                <input type="text" id="identifier">
+                <input type="text" id="identifier" autocomplete="username" placeholder="john / john@mail.com">
             </div>
 
             <div id="password-group">
                 <label for="password">Password</label>
-                <input type="password" id="password">
+                <input type="password" id="password" autocomplete="current-password" placeholder="••••••••">
             </div>
 
-            <button id="login-btn" type="button">Log in</button>
+            <button id="login-btn" type="submit">Log in</button>
 
             <p id="error-msg"></p>
         </form>
     </section>
 
+    <!-- ===================== PROFILE ===================== -->
     <section id="profile-section">
-        <h2 id="login"></h2>
-        <img id="avatar" alt="Profile picture">
-        <p>XP: <span id="xp"></span></p>
-        <p id="passfail"></p>
-        <svg id="passfail-graph" width="200" height="150"></svg>
-        <svg id="xp-graph" width="300" height="150"></svg>
-        <p id="audit"></p>
 
-        <button id="logout-btn">Log out</button>
+        <header class="topbar">
+            <div class="identity">
+                <img id="avatar" alt="Profile picture">
+                <div id="avatar-fallback" class="avatar-fallback">?</div>
+                <div>
+                    <h2 id="login">…</h2>
+                    <p id="fullname" class="muted"></p>
+                </div>
+            </div>
+            <button id="logout-btn">Log out</button>
+        </header>
+
+        <!-- key numbers -->
+        <div class="stats-row">
+            <div class="stat-card">
+                <div class="stat-label">Total XP</div>
+                <div class="stat-value" id="xp">…</div>
+                <div class="stat-sub" id="xp-raw"></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Level</div>
+                <div class="stat-value" id="level">…</div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Audit ratio</div>
+                <div class="stat-value" id="audit">…</div>
+                <div class="stat-sub" id="audit-sub"></div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-label">Success rate</div>
+                <div class="stat-value" id="success-rate">…</div>
+                <div class="stat-sub" id="passfail"></div>
+            </div>
+        </div>
+
+        <div class="grid">
+
+            <!-- identification -->
+            <article class="card">
+                <h3>Identification</h3>
+                <dl class="info-list">
+                    <div><dt>User ID</dt><dd id="info-id">…</dd></div>
+                    <div><dt>Login</dt><dd id="info-login">…</dd></div>
+                    <div><dt>Full name</dt><dd id="info-name">…</dd></div>
+                    <div><dt>Email</dt><dd id="info-email">…</dd></div>
+                    <div><dt>Campus</dt><dd id="info-campus">…</dd></div>
+                    <div><dt>Member since</dt><dd id="info-since">…</dd></div>
+                </dl>
+            </article>
+
+            <!-- audits -->
+            <article class="card">
+                <h3>Audits</h3>
+                <dl class="info-list">
+                    <div><dt>XP done (up)</dt><dd id="audit-up">…</dd></div>
+                    <div><dt>XP received (down)</dt><dd id="audit-down">…</dd></div>
+                    <div><dt>Audits done</dt><dd id="audit-up-count">…</dd></div>
+                    <div><dt>Audits received</dt><dd id="audit-down-count">…</dd></div>
+                </dl>
+                <div class="ratio-bar" title="Share of audits you did vs received">
+                    <span id="ratio-fill"></span>
+                </div>
+                <p class="muted small" id="audit-note">…</p>
+            </article>
+
+            <!-- graph 1 : xp over time -->
+            <article class="card wide">
+                <h3>XP progression over time</h3>
+                <p class="muted small">Cumulative XP earned since your first project</p>
+                <svg id="xp-graph" viewBox="0 0 640 240"></svg>
+            </article>
+
+            <!-- graph 2 : pass / fail -->
+            <article class="card">
+                <h3>Projects PASS / FAIL</h3>
+                <p class="muted small">Every graded attempt on the platform</p>
+                <svg id="passfail-graph" viewBox="0 0 260 220"></svg>
+            </article>
+
+            <!-- top projects -->
+            <article class="card">
+                <h3>Top projects by XP</h3>
+                <ul id="top-projects" class="list">
+                    <li class="muted small">Loading…</li>
+                </ul>
+            </article>
+
+            <!-- skills -->
+            <article class="card">
+                <h3>Best skills</h3>
+                <div id="skills" class="skills">
+                    <p class="muted small">Loading…</p>
+                </div>
+            </article>
+
+            <!-- recent activity -->
+            <article class="card wide">
+                <h3>Recent activity</h3>
+                <ul id="recent" class="list">
+                    <li class="muted small">Loading…</li>
+                </ul>
+            </article>
+
+        </div>
+
+        <footer class="foot muted small">Data queried live from the GraphQL endpoint</footer>
     </section>
 
     <script src="auth.js"></script>
     <script src="querys.js"></script>
     <script src="svg.js"></script>
 </body>
+
 </html>
