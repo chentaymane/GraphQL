@@ -1,6 +1,15 @@
 const SIGNIN_URL = 'https://learn.zone01oujda.ma/api/auth/signin'
 const GRAPHQL_URL = 'https://learn.zone01oujda.ma/api/graphql-engine/v1/graphql'
 
+
+// characters. Encode to UTF-8 bytes first so any password works.
+function toBase64(str) {
+    const bytes = new TextEncoder().encode(str)
+    let binary = ''
+    bytes.forEach(b => binary += String.fromCharCode(b))
+    return btoa(binary)
+}
+
 // ask the jwt with username/email and password
 async function Login() {
     const email_user = document.getElementById('identifier').value
@@ -9,7 +18,7 @@ async function Login() {
     const res = await fetch(SIGNIN_URL, {
         method: 'POST',
         headers: {
-            'Authorization': `Basic ${btoa(`${email_user}:${password}`)}`
+            'Authorization': `Basic ${toBase64(`${email_user}:${password}`)}`
         }
     })
     
