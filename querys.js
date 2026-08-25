@@ -94,12 +94,12 @@ async function getAvatar() {
 async function getXp() {
   const query = `
   {
-    transaction_aggregate(where: { type: { _eq: "xp" } }) {
-      aggregate {
-        count
-        sum { amount }
-      }
-    }
+    transaction_aggregate(
+    where: { type: { _eq: "xp" }, event: { object: { name: { _eq: "Module" } } } }
+  ) {
+    aggregate { count sum { amount } }
+  }
+
   }
   `
   try {
@@ -139,10 +139,14 @@ async function getLevel() {
 async function getPassFail() {
   const query = `
   {
-    passed: progress_aggregate(where: { grade: { _gte: 1 } }) {
+    passed: progress_aggregate(
+      where: { grade: { _gte: 1 }, object: { type: { _eq: "project" } } }
+    ) {
       aggregate { count }
     }
-    failed: progress_aggregate(where: { grade: { _lt: 1 } }) {
+    failed: progress_aggregate(
+      where: { grade: { _lt: 1 }, object: { type: { _eq: "project" } } }
+    ) {
       aggregate { count }
     }
   }
@@ -236,6 +240,12 @@ async function getTopProjects() {
   const list = document.getElementById('top-projects')
   try {
     const data = await queryGraphQL(query)
+
+    if (!data.transaction || data.transaction.length === 0) {
+      list.innerHTML = '<li class="muted small">No project yet</li>'
+      return
+    }
+
     const max = data.transaction[0].amount
 
     list.innerHTML = data.transaction.map(t => `
