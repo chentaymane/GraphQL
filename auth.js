@@ -12,7 +12,7 @@ async function Login() {
             'Authorization': `Basic ${btoa(`${email_user}:${password}`)}`
         }
     })
-
+    
     if (!res.ok) {
         throw new Error('Invalid username/email or password')
     }
@@ -35,14 +35,23 @@ function showProfile() {
     document.getElementById('profile-section').style.display = 'block'
 }
 
+
+
 function Logout() {
     localStorage.removeItem('jwt')
     window.location.reload()
 }
 
-// already logged in
-if (localStorage.getItem('jwt')) {
-    showProfile()
+// already logged in, log out if the jwt is invalid or expired
+const token = localStorage.getItem('jwt')
+if (token) {
+    try {
+        const payload = JSON.parse(atob(token.split('.')[1]))
+        if (payload.exp * 1000 < Date.now()) throw new Error('expired')
+        showProfile()
+    } catch {
+        Logout()
+    }
 }
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
