@@ -40,6 +40,14 @@ function setText(id, value) {
   document.getElementById(id).textContent = value
 }
 
+// no picture : remove the src, the css already draws an empty circle
+// (leaving the src would keep the previous user's picture)
+function setAvatar(url) {
+  const avatar = document.getElementById('avatar')
+  if (url) avatar.src = url
+  else avatar.removeAttribute('src')
+}
+
 // a name coming from the api must never be trusted inside innerHTML
 function escapeHtml(text) {
   const div = document.createElement('div')
@@ -103,7 +111,7 @@ async function getUserInfo() {
     setText('info-email', user.email || '-')
     setText('info-campus', user.campus || '-')
     setText('info-since', formatDate(user.createdAt))
-    if (user.avatarUrl) document.getElementById('avatar').src = user.avatarUrl
+    setAvatar(user.avatarUrl)
   } catch (err) {
     console.error('Failed to load user info:', err)
   }
@@ -247,8 +255,8 @@ async function getAuditRatio() {
     setText('audit-up-count', data.up.aggregate.count)
     setText('audit-down-count', data.down.aggregate.count)
 
-    // green part of the small bar
-    const share = up + down ? (up / (up + down)) * 100 : 50
+    // green part of the small bar, empty when there is no audit at all
+    const share = up + down ? (up / (up + down)) * 100 : 0
     document.getElementById('ratio-fill').style.width = share + '%'
     setText('audit-note', ratio >= 1 ? 'Good ratio, keep it up.' : 'Audit more projects to raise your ratio.')
   } catch (err) {
@@ -325,8 +333,27 @@ async function getSkills() {
   }
 }
 
+// empty every field before loading a profile
+// logging in does not reload the page, so without this anything the new user
+// has no value for would keep showing the previous user's data
+function resetProfile() {
+  setAvatar(null)
+  document.querySelectorAll('.stat-value, .info-list dd').forEach(el => el.textContent = '…')
+  document.querySelectorAll('.stat-sub').forEach(el => el.textContent = '')
+  document.getElementById('login').textContent = '…'
+  document.getElementById('fullname').textContent = ''
+  document.getElementById('audit-note').textContent = '…'
+  document.getElementById('ratio-fill').style.width = '0%'
+  document.getElementById('xp-graph').innerHTML = ''
+  document.getElementById('passfail-graph').innerHTML = ''
+  document.getElementById('top-projects').innerHTML = '<li class="muted small">Loading…</li>'
+  document.getElementById('recent').innerHTML = '<li class="muted small">Loading…</li>'
+  document.getElementById('skills').innerHTML = '<p class="muted small">Loading…</p>'
+}
+
 // load everything
 function loadProfile() {
+  resetProfile()
   getUserInfo()
   getLevel()
   getXp()
