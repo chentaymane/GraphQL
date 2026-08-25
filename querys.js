@@ -66,9 +66,6 @@ async function getUserInfo() {
     setText('info-email', user.email || '-')
     setText('info-campus', user.campus || '-')
     setText('info-since', formatDate(user.createdAt))
-
-    // first letter, used if the avatar does not load
-    document.getElementById('avatar-fallback').textContent = (name || user.login)[0].toUpperCase()
   } catch (err) {
     console.error('Failed to load user info:', err)
   }
@@ -84,13 +81,6 @@ async function getAvatar() {
   }
   `
   const img = document.getElementById('avatar')
-  const fallback = document.getElementById('avatar-fallback')
-
-  // show the letter if the picture is missing
-  img.addEventListener('error', () => {
-    img.style.display = 'none'
-    fallback.style.display = 'flex'
-  })
 
   try {
     const data = await queryGraphQL(query)

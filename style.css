@@ -167,23 +167,13 @@ input:focus {
     gap: 16px;
 }
 
-#avatar,
-.avatar-fallback {
+#avatar {
     width: 62px;
     height: 62px;
     border-radius: 50%;
     object-fit: cover;
     border: 2px solid var(--accent);
     background: var(--card-2);
-}
-
-.avatar-fallback {
-    display: none;
-    align-items: center;
-    justify-content: center;
-    font-size: 24px;
-    font-weight: 700;
-    color: var(--accent-soft);
 }
 
 .topbar h2 {
