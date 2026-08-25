@@ -60,12 +60,14 @@ function drawXpOverTimeGraph(cumulative, transactions) {
     const padTop = 20
     const padBottom = 34            // space for the dates
 
-    if (cumulative.length < 2) {
+    const maxValue = cumulative[cumulative.length - 1]
+
+    // maxValue 0 would make every y a division by zero
+    if (cumulative.length < 2 || !maxValue) {
         svg.innerHTML = `<text class="bar-label" x="320" y="120" text-anchor="middle">Not enough data yet</text>`
         return
     }
 
-    const maxValue = cumulative[cumulative.length - 1]
     const plotW = width - padLeft - 20
     const plotH = height - padTop - padBottom
 

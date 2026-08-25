@@ -1,3 +1,5 @@
+//  HELPERS 
+
 // send a query to the graphql endpoint
 async function queryGraphQL(query, variables = {}) {
   const token = localStorage.getItem('jwt')
@@ -20,7 +22,7 @@ async function queryGraphQL(query, variables = {}) {
   return result.data
 }
 
-// 1000 xp -> 1 kB
+// 1000 xp -> 1 kB (665 kB, but 1.62 MB : kB is rounded, MB keeps 2 decimals)
 function formatXP(xp) {
   if (xp >= 1000000) return (xp / 1000000).toFixed(2) + ' MB'
   if (xp >= 1000) return Math.round(xp / 1000) + ' kB'
@@ -38,7 +40,39 @@ function setText(id, value) {
   document.getElementById(id).textContent = value
 }
 
-// user identification (normal query)
+// a name coming from the api must never be trusted inside innerHTML
+function escapeHtml(text) {
+  const div = document.createElement('div')
+  div.textContent = text
+  return div.innerHTML
+}
+
+// keep the best amount of each name
+// (the rows are sorted by amount desc, so the first one of a name is its best)
+function bestByName(rows, nameOf) {
+  const best = {}
+  for (const row of rows) {
+    const name = nameOf(row)
+    if (!best[name]) best[name] = row.amount
+  }
+  return best
+}
+
+// one "name ..... value" line with its bar, used by the projects and the skills
+function barRow(name, value, percent) {
+  return `
+    <div class="row">
+      <span class="name">${escapeHtml(name)}</span>
+      <span class="value">${value}</span>
+    </div>
+    <div class="track"><span style="width:${percent}%"></span></div>
+  `
+}
+
+// ------------------------------------------------------------------------------------
+//  QUERIES 
+
+// user identification and avatar (normal query)
 async function getUserInfo() {
   const query = `
   {
@@ -50,12 +84,15 @@ async function getUserInfo() {
       email
       campus
       createdAt
+      avatarUrl
     }
   }
   `
   try {
     const data = await queryGraphQL(query)
     const user = data.user[0]
+    if (!user) throw new Error('no user returned')
+
     const name = `${user.firstName || ''} ${user.lastName || ''}`.trim()
 
     setText('login', user.login)
@@ -66,60 +103,24 @@ async function getUserInfo() {
     setText('info-email', user.email || '-')
     setText('info-campus', user.campus || '-')
     setText('info-since', formatDate(user.createdAt))
+    if (user.avatarUrl) document.getElementById('avatar').src = user.avatarUrl
   } catch (err) {
     console.error('Failed to load user info:', err)
   }
 }
 
-// avatar picture
-async function getAvatar() {
-  const query = `
-  {
-    user {
-      avatarUrl
-    }
-  }
-  `
-  const img = document.getElementById('avatar')
-
-  try {
-    const data = await queryGraphQL(query)
-    img.src = data.user[0].avatarUrl
-  } catch (err) {
-    console.error('Failed to load avatar:', err)
-  }
-}
-
-// total xp (query with arguments)
-async function getXp() {
-  const query = `
-  {
-    transaction_aggregate(
-    where: { type: { _eq: "xp" }, event: { object: { name: { _eq: "Module" } } } }
-  ) {
-    aggregate { count sum { amount } }
-  }
-
-  }
-  `
-  try {
-    const data = await queryGraphQL(query)
-    const total = data.transaction_aggregate.aggregate.sum.amount
-    const count = data.transaction_aggregate.aggregate.count
-
-    setText('xp', formatXP(total))
-    setText('xp-raw', `${total} XP in ${count} transactions`)
-  } catch (err) {
-    console.error('Failed to load XP:', err)
-  }
-}
-
-// level (query with a variable, the id comes from the jwt)
+// module level (query with a variable, the id comes from the jwt)
+// scoped to the Module event like the XP, otherwise a piscine level
+// transaction can win the `order_by amount desc` and show the wrong number
 async function getLevel() {
   const query = `
   query ($userId: Int!) {
     transaction(
-      where: { type: { _eq: "level" }, userId: { _eq: $userId } }
+      where: {
+        type: { _eq: "level" }
+        userId: { _eq: $userId }
+        event: { object: { name: { _eq: "Module" } } }
+      }
       order_by: { amount: desc }
       limit: 1
     ) {
@@ -135,33 +136,87 @@ async function getLevel() {
   }
 }
 
-// projects passed and failed
-async function getPassFail() {
+// total xp, and the xp graph
+// the total is summed from the same rows the graph draws, so the number on the
+// card and the last point of the curve can never disagree
+async function getXp() {
   const query = `
   {
-    passed: progress_aggregate(
-      where: { grade: { _gte: 1 }, object: { type: { _eq: "project" } } }
+    transaction(
+      where: { type: { _eq: "xp" }, event: { object: { name: { _eq: "Module" } } } }
+      order_by: { createdAt: asc }
     ) {
-      aggregate { count }
-    }
-    failed: progress_aggregate(
-      where: { grade: { _lt: 1 }, object: { type: { _eq: "project" } } }
-    ) {
-      aggregate { count }
+      amount
+      createdAt
     }
   }
   `
   try {
-    const data = await queryGraphQL(query)
-    const passed = data.passed.aggregate.count
-    const failed = data.failed.aggregate.count
-    const total = passed + failed
+    const transactions = (await queryGraphQL(query)).transaction
+    const cumulative = calculateCumulative(transactions)
+    const total = cumulative.length ? cumulative[cumulative.length - 1] : 0
 
-    setText('success-rate', total ? Math.round((passed / total) * 100) + '%' : '-')
+    setText('xp', formatXP(total))
+    setText('xp-raw', `${total} XP in ${transactions.length} transactions`)
+    drawXpOverTimeGraph(cumulative, transactions)
+  } catch (err) {
+    console.error('Failed to load XP:', err)
+  }
+}
+
+// projects : success rate, the pass/fail graph and the recent activity
+// progress has one row per attempt, so the counts keep only the newest row of
+// each project, otherwise a retry you eventually passed still counts as a fail
+async function getProjects() {
+  const query = `
+  {
+    progress(
+      where: { object: { type: { _eq: "project" } } }
+      order_by: { updatedAt: desc }
+    ) {
+      grade
+      updatedAt
+      object {
+        id
+        name
+      }
+    }
+  }
+  `
+  const list = document.getElementById('recent')
+  try {
+    const rows = (await queryGraphQL(query)).progress
+
+    const seen = new Set()
+    let passed = 0
+    let failed = 0
+
+    for (const p of rows) {
+      if (seen.has(p.object.id)) continue
+      seen.add(p.object.id)
+      if (p.grade >= 1) passed++
+      else failed++
+    }
+
+    const total = passed + failed
+    setText('success-rate', total ? ((passed / total) * 100).toFixed(1) + '%' : '-')
     setText('passfail', `${passed} passed / ${failed} failed`)
     drawPassFailGraph(passed, failed)
+
+    // the activity feed shows every attempt, newest first
+    list.innerHTML = rows.slice(0, 10).map(p => {
+      const pass = p.grade >= 1
+      return `
+        <li class="activity">
+          <span class="badge ${pass ? 'pass' : 'fail'}">${pass ? 'PASS' : 'FAIL'}</span>
+          <span class="name">${escapeHtml(p.object.name)}</span>
+          <span class="muted small">${formatDate(p.updatedAt)}</span>
+        </li>
+      `
+    }).join('') || '<li class="muted small">No activity yet</li>'
   } catch (err) {
-    console.error('Failed to load pass/fail:', err)
+    list.innerHTML = '<li class="muted small">No activity yet</li>'
+    console.error('Failed to load projects:', err)
   }
 }
 
@@ -181,10 +236,12 @@ async function getAuditRatio() {
     const data = await queryGraphQL(query)
     const up = data.up.aggregate.sum.amount || 0
     const down = data.down.aggregate.sum.amount || 0
-    const ratio = down ? (up / down).toFixed(2) : '-'
+    const ratio = down ? up / down : null
+    const diff = up - down
 
-    setText('audit', ratio)
-    setText('audit-sub', `${formatXP(up)} up / ${formatXP(down)} down`)
+    setText('audit', ratio === null ? '-' : ratio.toFixed(2))
+    // the platform shows the ratio then the difference, eg "1.71 + 12 kB"
+    setText('audit-sub', `${diff >= 0 ? '+' : '-'} ${formatXP(Math.abs(diff))}`)
     setText('audit-up', formatXP(up))
     setText('audit-down', formatXP(down))
     setText('audit-up-count', data.up.aggregate.count)
@@ -199,28 +256,6 @@ async function getAuditRatio() {
   }
 }
 
-// xp over time (graph 1)
-async function getXpOverTime() {
-  const query = `
-  {
-    transaction(where: { type: { _eq: "xp" } }, order_by: { createdAt: asc }) {
-      amount
-      createdAt
-      path
-    }
-  }
-  `
-  try {
-    const data = await queryGraphQL(query)
-    const transactions = data.transaction
-    const cumulative = calculateCumulative(transactions)
-
-    drawXpOverTimeGraph(cumulative, transactions)
-  } catch (err) {
-    console.error('Failed to load XP over time:', err)
-  }
-}
-
 // best projects (nested query : transaction -> object)
 async function getTopProjects() {
   const query = `
@@ -228,7 +263,6 @@ async function getTopProjects() {
     transaction(
       where: { type: { _eq: "xp" }, object: { type: { _eq: "project" } } }
       order_by: { amount: desc }
-      limit: 8
     ) {
       amount
       object {
@@ -241,22 +275,19 @@ async function getTopProjects() {
   try {
     const data = await queryGraphQL(query)
 
-    if (!data.transaction || data.transaction.length === 0) {
+    // a project can have several xp transactions, keep the best one of each
+    const best = bestByName(data.transaction, t => t.object.name)
+    const names = Object.keys(best).slice(0, 8)
+
+    if (!names.length) {
       list.innerHTML = '<li class="muted small">No project yet</li>'
       return
     }
 
-    const max = data.transaction[0].amount
-
-    list.innerHTML = data.transaction.map(t => `
-      <li>
-        <div class="row">
-          <span class="name">${t.object.name}</span>
-          <span class="value">${formatXP(t.amount)}</span>
-        </div>
-        <div class="track"><span style="width:${(t.amount / max) * 100}%"></span></div>
-      </li>
-    `).join('')
+    const max = best[names[0]]
+    list.innerHTML = names
+      .map(name => `<li>${barRow(name, formatXP(best[name]), (best[name] / max) * 100)}</li>`)
+      .join('')
   } catch (err) {
     list.innerHTML = '<li class="muted small">No project yet</li>'
     console.error('Failed to load top projects:', err)
@@ -276,78 +307,33 @@ async function getSkills() {
   const box = document.getElementById('skills')
   try {
     const data = await queryGraphQL(query)
-    const best = {}
 
-    // the list is sorted, so the first value of a skill is the best one
-    for (const t of data.transaction) {
-      const name = t.type.replace('skill_', '')
-      if (!best[name]) best[name] = t.amount
+    const best = bestByName(data.transaction, t => t.type.replace('skill_', ''))
+    const names = Object.keys(best).slice(0, 8)
+
+    if (!names.length) {
+      box.innerHTML = '<p class="muted small">No skill yet</p>'
+      return
     }
 
-    box.innerHTML = Object.keys(best).slice(0, 8).map(name => `
-      <div class="skill">
-        <div class="row">
-          <span class="name">${name}</span>
-          <span class="value">${best[name]}%</span>
-        </div>
-        <div class="track"><span style="width:${best[name]}%"></span></div>
-      </div>
-    `).join('')
+    box.innerHTML = names
+      .map(name => `<div class="skill">${barRow(name, best[name] + '%', best[name])}</div>`)
+      .join('')
   } catch (err) {
     box.innerHTML = '<p class="muted small">No skill yet</p>'
     console.error('Failed to load skills:', err)
   }
 }
 
-// last projects (nested query : progress -> object)
-async function getRecentActivity() {
-  const query = `
-  {
-    progress(
-      where: { object: { type: { _eq: "project" } } }
-      order_by: { updatedAt: desc }
-      limit: 10
-    ) {
-      grade
-      updatedAt
-      object {
-        name
-      }
-    }
-  }
-  `
-  const list = document.getElementById('recent')
-  try {
-    const data = await queryGraphQL(query)
-
-    list.innerHTML = data.progress.map(p => {
-      const pass = p.grade >= 1
-      return `
-        <li class="activity">
-          <span class="badge ${pass ? 'pass' : 'fail'}">${pass ? 'PASS' : 'FAIL'}</span>
-          <span class="name">${p.object.name}</span>
-          <span class="muted small">${formatDate(p.updatedAt)}</span>
-        </li>
-      `
-    }).join('')
-  } catch (err) {
-    list.innerHTML = '<li class="muted small">No activity yet</li>'
-    console.error('Failed to load recent activity:', err)
-  }
-}
-
 // load everything
 function loadProfile() {
   getUserInfo()
-  getAvatar()
-  getXp()
   getLevel()
-  getPassFail()
+  getXp()
+  getProjects()
   getAuditRatio()
-  getXpOverTime()
   getTopProjects()
   getSkills()
-  getRecentActivity()
 }
 
 if (localStorage.getItem('jwt')) {

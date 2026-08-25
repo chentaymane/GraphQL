@@ -2,7 +2,8 @@ const SIGNIN_URL = 'https://learn.zone01oujda.ma/api/auth/signin'
 const GRAPHQL_URL = 'https://learn.zone01oujda.ma/api/graphql-engine/v1/graphql'
 
 
-// characters. Encode to UTF-8 bytes first so any password works.
+// btoa() only accepts latin1, so encode to UTF-8 bytes first to let any
+// password (accents, emoji ...) go through
 function toBase64(str) {
     const bytes = new TextEncoder().encode(str)
     let binary = ''
@@ -32,11 +33,15 @@ async function Login() {
     loadProfile()
 }
 
+// the middle part of the jwt holds the user id and the expiry date
+function getTokenPayload() {
+    const token = localStorage.getItem('jwt')
+    return JSON.parse(atob(token.split('.')[1]))
+}
+
 // the id of the user is inside the jwt
 function getUserIdFromToken() {
-    const token = localStorage.getItem('jwt')
-    const payload = JSON.parse(atob(token.split('.')[1]))
-    return Number(payload.sub)
+    return Number(getTokenPayload().sub)
 }
 
 function showProfile() {
@@ -52,11 +57,9 @@ function Logout() {
 }
 
 // already logged in, log out if the jwt is invalid or expired
-const token = localStorage.getItem('jwt')
-if (token) {
+if (localStorage.getItem('jwt')) {
     try {
-        const payload = JSON.parse(atob(token.split('.')[1]))
-        if (payload.exp * 1000 < Date.now()) throw new Error('expired')
+        if (getTokenPayload().exp * 1000 < Date.now()) throw new Error('expired')
         showProfile()
     } catch {
         Logout()
