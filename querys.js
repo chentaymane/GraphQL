@@ -40,14 +40,6 @@ function setText(id, value) {
   document.getElementById(id).textContent = value
 }
 
-// no picture : remove the src, the css already draws an empty circle
-// (leaving the src would keep the previous user's picture)
-function setAvatar(url) {
-  const avatar = document.getElementById('avatar')
-  if (url) avatar.src = url
-  else avatar.removeAttribute('src')
-}
-
 // a name coming from the api must never be trusted inside innerHTML
 function escapeHtml(text) {
   const div = document.createElement('div')
@@ -111,7 +103,7 @@ async function getUserInfo() {
     setText('info-email', user.email || '-')
     setText('info-campus', user.campus || '-')
     setText('info-since', formatDate(user.createdAt))
-    setAvatar(user.avatarUrl)
+    if (user.avatarUrl) document.getElementById('avatar').src = user.avatarUrl
   } catch (err) {
     console.error('Failed to load user info:', err)
   }
@@ -194,17 +186,21 @@ async function getProjects() {
   const list = document.getElementById('recent')
   try {
     const rows = (await queryGraphQL(query)).progress
-
     const seen = new Set()
     let passed = 0
     let failed = 0
+  for (let i = 0; i < rows.length; i++) {
+    const p = rows[i];
 
-    for (const p of rows) {
-      if (seen.has(p.object.id)) continue
-      seen.add(p.object.id)
-      if (p.grade >= 1) passed++
-      else failed++
+    if (seen.has(p.object.id)) continue
+    if (p.grade === null) {
+      rows.splice(i--, 1)
+      continue
     }
+    seen.add(p.object.id)
+    if (p.grade >= 1) passed++
+    else failed++
+  }
 
     const total = passed + failed
     setText('success-rate', total ? ((passed / total) * 100).toFixed(1) + '%' : '-')
@@ -213,6 +209,7 @@ async function getProjects() {
 
     // the activity feed shows every attempt, newest first
     list.innerHTML = rows.slice(0, 10).map(p => {
+      
       const pass = p.grade >= 1
       return `
         <li class="activity">
@@ -255,8 +252,8 @@ async function getAuditRatio() {
     setText('audit-up-count', data.up.aggregate.count)
     setText('audit-down-count', data.down.aggregate.count)
 
-    // green part of the small bar, empty when there is no audit at all
-    const share = up + down ? (up / (up + down)) * 100 : 0
+    // green part of the small bar
+    const share = up + down ? (up / (up + down)) * 100 : 50
     document.getElementById('ratio-fill').style.width = share + '%'
     setText('audit-note', ratio >= 1 ? 'Good ratio, keep it up.' : 'Audit more projects to raise your ratio.')
   } catch (err) {
@@ -333,27 +330,8 @@ async function getSkills() {
   }
 }
 
-// empty every field before loading a profile
-// logging in does not reload the page, so without this anything the new user
-// has no value for would keep showing the previous user's data
-function resetProfile() {
-  setAvatar(null)
-  document.querySelectorAll('.stat-value, .info-list dd').forEach(el => el.textContent = '…')
-  document.querySelectorAll('.stat-sub').forEach(el => el.textContent = '')
-  document.getElementById('login').textContent = '…'
-  document.getElementById('fullname').textContent = ''
-  document.getElementById('audit-note').textContent = '…'
-  document.getElementById('ratio-fill').style.width = '0%'
-  document.getElementById('xp-graph').innerHTML = ''
-  document.getElementById('passfail-graph').innerHTML = ''
-  document.getElementById('top-projects').innerHTML = '<li class="muted small">Loading…</li>'
-  document.getElementById('recent').innerHTML = '<li class="muted small">Loading…</li>'
-  document.getElementById('skills').innerHTML = '<p class="muted small">Loading…</p>'
-}
-
 // load everything
 function loadProfile() {
-  resetProfile()
   getUserInfo()
   getLevel()
   getXp()
