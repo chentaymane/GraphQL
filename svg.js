@@ -60,10 +60,13 @@ function drawXpOverTimeGraph(cumulative, transactions) {
     const padTop = 20
     const padBottom = 34            // space for the dates
 
-    const maxValue = cumulative[cumulative.length - 1]
+    // the top of the scale is the highest point, not the last one : a negative
+    // xp transaction makes the curve go down and would then overflow the box
+    // (a reduce, not Math.max(...cumulative), which throws on a huge history)
+    const maxValue = cumulative.reduce((max, value) => value > max ? value : max, 0)
 
     // maxValue 0 would make every y a division by zero
-    if (cumulative.length < 2 || !maxValue) {
+    if (cumulative.length < 2 || maxValue <= 0) {
         svg.innerHTML = `<text class="bar-label" x="320" y="120" text-anchor="middle">Not enough data yet</text>`
         return
     }
@@ -88,11 +91,16 @@ function drawXpOverTimeGraph(cumulative, transactions) {
         `
     }
 
-    // 5 dates under the graph
+    // up to 5 dates under the graph, without repeating the same label twice
+    // when the whole history fits in one or two months
     let dates = ''
+    const shown = new Set()
     for (let i = 0; i <= 4; i++) {
         const index = Math.round((transactions.length - 1) * (i / 4))
-        dates += `<text class="axis-label" x="${xAt(index)}" y="${height - 10}" text-anchor="middle">${shortDate(transactions[index].createdAt)}</text>`
+        const label = shortDate(transactions[index].createdAt)
+        if (shown.has(label)) continue
+        shown.add(label)
+        dates += `<text class="axis-label" x="${xAt(index)}" y="${height - 10}" text-anchor="middle">${label}</text>`
     }
 
     // small circles, the browser shows the title when the mouse is over

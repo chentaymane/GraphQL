@@ -88,41 +88,20 @@
                 </dl>
             </article>
 
-            <!-- audits -->
-            <article class="card">
-                <h3>Audits</h3>
-                <dl class="info-list">
-                    <div><dt>XP done (up)</dt><dd id="audit-up">…</dd></div>
-                    <div><dt>XP received (down)</dt><dd id="audit-down">…</dd></div>
-                    <div><dt>Audits done</dt><dd id="audit-up-count">…</dd></div>
-                    <div><dt>Audits received</dt><dd id="audit-down-count">…</dd></div>
-                </dl>
-                <div class="ratio-bar" title="Share of audits you did vs received">
-                    <span id="ratio-fill"></span>
-                </div>
-                <p class="muted small" id="audit-note">…</p>
-            </article>
-
-            <!-- graph 1 : xp over time -->
-            <article class="card wide">
-                <h3>XP progression over time</h3>
-                <p class="muted small">Cumulative XP earned since your first project</p>
-                <svg id="xp-graph" viewBox="0 0 640 240"></svg>
-            </article>
-
-            <!-- graph 2 : pass / fail -->
+            <!-- graph 1 : pass / fail -->
             <article class="card">
                 <h3>Projects PASS / FAIL</h3>
                 <p class="muted small">Latest attempt on each project</p>
                 <svg id="passfail-graph" viewBox="0 0 260 220"></svg>
             </article>
 
-            <!-- top projects -->
-            <article class="card">
-                <h3>Top projects by XP</h3>
-                <ul id="top-projects" class="list">
-                    <li class="muted small">Loading…</li>
-                </ul>
+            <!-- graph 2 : xp over time -->
+            <article class="card wide">
+                <h3>XP progression over time</h3>
+                <p class="muted small">Cumulative XP earned since your first project</p>
+                <div class="chart-scroll">
+                    <svg id="xp-graph" viewBox="0 0 640 240"></svg>
+                </div>
             </article>
 
             <!-- skills -->

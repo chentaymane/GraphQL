@@ -342,6 +342,11 @@ input:focus {
     box-shadow: var(--shadow-sm);
     padding: var(--s5);
     min-width: 0;
+    /* the cards of a row are stretched to the tallest one, so lay their content
+       out in a column and let the last block take the leftover height instead
+       of leaving a hole at the bottom of the shorter card */
+    display: flex;
+    flex-direction: column;
     transition: border-color var(--base) var(--ease), box-shadow var(--base) var(--ease);
 }
 
@@ -372,6 +377,13 @@ input:focus {
 
 /* ===== INFO LIST ===== */
 
+.info-list {
+    flex: 1;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+}
+
 .info-list div {
     display: flex;
     justify-content: space-between;
@@ -397,25 +409,7 @@ input:focus {
     word-break: break-word;
 }
 
-/* ===== RATIO BAR ===== */
-
-.ratio-bar {
-    height: 10px;
-    background: var(--danger-soft);
-    border-radius: 999px;
-    overflow: hidden;
-    margin: 16px 0 10px;
-}
-
-.ratio-bar span {
-    display: block;
-    height: 100%;
-    width: 50%;
-    background: linear-gradient(90deg, var(--success), #22c55e);
-    transition: width 0.6s ease;
-}
-
-/* ===== LISTS (top projects / activity) ===== */
+/* ===== LISTS (recent activity) ===== */
 
 .list {
     list-style: none;
@@ -632,6 +626,16 @@ line.gridline,
 }
 
 @media (max-width: 640px) {
+    /* the xp curve is drawn in a 640 wide viewBox : squeezing it into a phone
+       makes its axis labels unreadable, so keep it legible and let it scroll */
+    .chart-scroll {
+        overflow-x: auto;
+    }
+
+    .chart-scroll #xp-graph {
+        min-width: 460px;
+    }
+
     .stats-row {
         grid-template-columns: repeat(2, 1fr);
         gap: var(--s2);

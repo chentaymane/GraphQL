@@ -11,10 +11,24 @@ function toBase64(str) {
     return btoa(binary)
 }
 
+// a jwt is base64URL, not base64 : it uses - and _ instead of + and / and
+// drops the = padding, so atob() alone throws on roughly one token out of two
+function fromBase64Url(part) {
+    const base64 = part.replace(/-/g, '+').replace(/_/g, '/')
+    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4)
+    const binary = atob(padded)
+    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0))
+    return new TextDecoder().decode(bytes)
+}
+
 // ask the jwt with username/email and password
 async function Login() {
-    const email_user = document.getElementById('identifier').value
+    const email_user = document.getElementById('identifier').value.trim()
     const password = document.getElementById('password').value
+
+    if (!email_user || !password) {
+        throw new Error('Please fill in both fields')
+    }
 
     const res = await fetch(SIGNIN_URL, {
         method: 'POST',
@@ -22,12 +36,19 @@ async function Login() {
             'Authorization': `Basic ${toBase64(`${email_user}:${password}`)}`
         }
     })
-    
+
+    const body = await res.json().catch(() => null)
+
     if (!res.ok) {
-        throw new Error('Invalid username/email or password')
+        // the api answers { error: "..." } on a bad password
+        throw new Error((body && body.error) || 'Invalid username/email or password')
     }
 
-    const token = await res.json()
+    // the endpoint answers with the raw jwt as a json string, but keep the
+    // { token } shape working too
+    const token = typeof body === 'string' ? body : body && (body.token || body.jwt)
+    if (!token) throw new Error('No token returned by the server')
+
     localStorage.setItem('jwt', token)
     showProfile()
     loadProfile()
@@ -36,12 +57,18 @@ async function Login() {
 // the middle part of the jwt holds the user id and the expiry date
 function getTokenPayload() {
     const token = localStorage.getItem('jwt')
-    return JSON.parse(atob(token.split('.')[1]))
+    const parts = (token || '').split('.')
+    if (parts.length !== 3) throw new Error('malformed token')
+    return JSON.parse(fromBase64Url(parts[1]))
 }
 
-// the id of the user is inside the jwt
+// the id of the user is inside the jwt, under sub or in the hasura claims
 function getUserIdFromToken() {
-    return Number(getTokenPayload().sub)
+    const payload = getTokenPayload()
+    const claims = payload['https://hasura.io/jwt/claims'] || {}
+    const id = Number(payload.sub ?? claims['x-hasura-user-id'])
+    if (!Number.isFinite(id)) throw new Error('no user id in the token')
+    return id
 }
 
 function showProfile() {
@@ -51,7 +78,12 @@ function showProfile() {
 
 
 
+// every query that is running when the token dies calls this, so only the
+// first call does the work instead of queueing one reload per query
+let loggingOut = false
 function Logout() {
+    if (loggingOut) return
+    loggingOut = true
     localStorage.removeItem('jwt')
     window.location.reload()
 }
@@ -60,6 +92,7 @@ function Logout() {
 if (localStorage.getItem('jwt')) {
     try {
         if (getTokenPayload().exp * 1000 < Date.now()) throw new Error('expired')
+        getUserIdFromToken()
         showProfile()
     } catch {
         Logout()
@@ -68,10 +101,16 @@ if (localStorage.getItem('jwt')) {
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault()
+    const error = document.getElementById('error-msg')
+    const button = document.getElementById('login-btn')
+    error.textContent = ''
+    button.disabled = true
     try {
         await Login()
     } catch (err) {
-        document.getElementById('error-msg').textContent = err.message
+        error.textContent = err.message
+    } finally {
+        button.disabled = false
     }
 })
 
