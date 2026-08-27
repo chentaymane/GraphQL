@@ -1,9 +1,7 @@
 const SIGNIN_URL = 'https://learn.zone01oujda.ma/api/auth/signin'
 const GRAPHQL_URL = 'https://learn.zone01oujda.ma/api/graphql-engine/v1/graphql'
 
-
-// btoa() only accepts latin1, so encode to UTF-8 bytes first to let any
-// password (accents, emoji ...) go through
+// btoa() only accepts latin1, so encode to UTF-8 bytes first
 function toBase64(str) {
     const bytes = new TextEncoder().encode(str)
     let binary = ''
@@ -11,8 +9,7 @@ function toBase64(str) {
     return btoa(binary)
 }
 
-// a jwt is base64URL, not base64 : it uses - and _ instead of + and / and
-// drops the = padding, so atob() alone throws on roughly one token out of two
+// a jwt is base64URL, not base64
 function fromBase64Url(part) {
     const base64 = part.replace(/-/g, '+').replace(/_/g, '/')
     const padded = base64 + '='.repeat((4 - base64.length % 4) % 4)
@@ -40,12 +37,9 @@ async function Login() {
     const body = await res.json().catch(() => null)
 
     if (!res.ok) {
-        // the api answers { error: "..." } on a bad password
         throw new Error((body && body.error) || 'Invalid username/email or password')
     }
 
-    // the endpoint answers with the raw jwt as a json string, but keep the
-    // { token } shape working too
     const token = typeof body === 'string' ? body : body && (body.token || body.jwt)
     if (!token) throw new Error('No token returned by the server')
 
@@ -62,7 +56,6 @@ function getTokenPayload() {
     return JSON.parse(fromBase64Url(parts[1]))
 }
 
-// the id of the user is inside the jwt, under sub or in the hasura claims
 function getUserIdFromToken() {
     const payload = getTokenPayload()
     const claims = payload['https://hasura.io/jwt/claims'] || {}
@@ -76,10 +69,6 @@ function showProfile() {
     document.getElementById('profile-section').style.display = 'block'
 }
 
-
-
-// every query that is running when the token dies calls this, so only the
-// first call does the work instead of queueing one reload per query
 let loggingOut = false
 function Logout() {
     if (loggingOut) return

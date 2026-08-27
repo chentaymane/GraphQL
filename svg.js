@@ -1,42 +1,26 @@
-// graph 1 : projects pass / fail
+// graph 1: projects pass / fail, two plain bars
 function drawPassFailGraph(passed, failed) {
     const svg = document.getElementById('passfail-graph')
-    const bottom = 175              // line under the bars
-    const maxBar = 130              // size of the biggest bar
-    const total = passed + failed
-    const maxValue = Math.max(passed, failed, 1)
+    const bottom = 120
+    const maxBar = 90
+    const max = Math.max(passed, failed, 1)
 
-    const passedHeight = (passed / maxValue) * maxBar
-    const failedHeight = (failed / maxValue) * maxBar
+    const passH = (passed / max) * maxBar
+    const failH = (failed / max) * maxBar
 
-    // one bar with its number, its name and its percent
-    function bar(x, value, height, label) {
+    function bar(x, value, height, label, color) {
         const y = bottom - height
-        const percent = total ? Math.round((value / total) * 100) : 0
         return `
-          <rect x="${x}" y="${y}" width="70" height="${height}" rx="8" fill="url(#grad-${label})" />
-          <text class="bar-value" x="${x + 35}" y="${y - 10}" text-anchor="middle">${value}</text>
-          <text class="bar-label" x="${x + 35}" y="${bottom + 22}" text-anchor="middle">${label}</text>
-          <text class="bar-pct" x="${x + 35}" y="${bottom + 40}" text-anchor="middle">${percent}%</text>
+          <rect x="${x}" y="${y}" width="60" height="${height}" fill="${color}" />
+          <text x="${x + 30}" y="${y - 6}" text-anchor="middle" fill="#eee">${value}</text>
+          <text x="${x + 30}" y="${bottom + 16}" text-anchor="middle" fill="#aaa">${label}</text>
         `
     }
 
     svg.innerHTML = `
-        <defs>
-            <linearGradient id="grad-PASS" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#34d399" />
-                <stop offset="100%" stop-color="#059669" />
-            </linearGradient>
-            <linearGradient id="grad-FAIL" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#fb7185" />
-                <stop offset="100%" stop-color="#e11d48" />
-            </linearGradient>
-        </defs>
-
-        <line class="axis" x1="20" y1="${bottom}" x2="240" y2="${bottom}" />
-        ${bar(40, passed, passedHeight, 'PASS')}
-        ${bar(150, failed, failedHeight, 'FAIL')}
-        <text class="chart-total" x="130" y="20" text-anchor="middle">${total} projects</text>
+        <line x1="10" y1="${bottom}" x2="190" y2="${bottom}" stroke="#555" />
+        ${bar(30, passed, passH, 'PASS', '#4ade80')}
+        ${bar(110, failed, failH, 'FAIL', '#f87171')}
     `
 }
 
@@ -45,87 +29,53 @@ function calculateCumulative(transactions) {
     let total = 0
     const cumulative = []
     for (const t of transactions) {
-        total = total + t.amount
+        total += t.amount
         cumulative.push(total)
     }
     return cumulative
 }
 
-// graph 2 : xp over time
+// graph 2: xp over time, a plain line
 function drawXpOverTimeGraph(cumulative, transactions) {
     const svg = document.getElementById('xp-graph')
-    const width = 640
-    const height = 240
-    const padLeft = 60              // space for the xp labels
-    const padTop = 20
-    const padBottom = 34            // space for the dates
+    const width = 600
+    const height = 200
+    const padLeft = 50
+    const padBottom = 24
+    const top = 10
 
-    // the top of the scale is the highest point, not the last one : a negative
-    // xp transaction makes the curve go down and would then overflow the box
-    // (a reduce, not Math.max(...cumulative), which throws on a huge history)
-    const maxValue = cumulative.reduce((max, value) => value > max ? value : max, 0)
+    const max = cumulative.reduce((m, v) => v > m ? v : m, 0)
 
-    // maxValue 0 would make every y a division by zero
-    if (cumulative.length < 2 || maxValue <= 0) {
-        svg.innerHTML = `<text class="bar-label" x="320" y="120" text-anchor="middle">Not enough data yet</text>`
+    if (cumulative.length < 2 || max <= 0) {
+        svg.innerHTML = `<text x="300" y="100" text-anchor="middle" fill="#aaa">Not enough data yet</text>`
         return
     }
 
-    const plotW = width - padLeft - 20
-    const plotH = height - padTop - padBottom
+    const plotW = width - padLeft - 10
+    const plotH = height - top - padBottom
 
-    // position of a point inside the svg
-    const xAt = (i) => padLeft + (i / (cumulative.length - 1)) * plotW
-    const yAt = (value) => padTop + plotH - (value / maxValue) * plotH
+    const xAt = i => padLeft + (i / (cumulative.length - 1)) * plotW
+    const yAt = v => top + plotH - (v / max) * plotH
 
-    const points = cumulative.map((value, i) => `${xAt(i)},${yAt(value)}`).join(' ')
-    const area = `${padLeft},${padTop + plotH} ${points} ${padLeft + plotW},${padTop + plotH}`
+    const points = cumulative.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ')
 
-    // 5 lines with the xp amount on the left
+    // a few xp labels on the left
     let grid = ''
     for (let i = 0; i <= 4; i++) {
-        const value = (maxValue / 4) * i
-        grid += `
-          <line class="gridline" x1="${padLeft}" y1="${yAt(value)}" x2="${width - 20}" y2="${yAt(value)}" />
-          <text class="axis-label" x="${padLeft - 10}" y="${yAt(value) + 4}" text-anchor="end">${formatXP(Math.round(value))}</text>
-        `
+        const value = (max / 4) * i
+        grid += `<text x="${padLeft - 8}" y="${yAt(value) + 4}" text-anchor="end" fill="#aaa" font-size="11">${formatXP(Math.round(value))}</text>`
     }
 
-    // up to 5 dates under the graph, without repeating the same label twice
-    // when the whole history fits in one or two months
+    // a few dates under the graph
     let dates = ''
-    const shown = new Set()
     for (let i = 0; i <= 4; i++) {
         const index = Math.round((transactions.length - 1) * (i / 4))
-        const label = shortDate(transactions[index].createdAt)
-        if (shown.has(label)) continue
-        shown.add(label)
-        dates += `<text class="axis-label" x="${xAt(index)}" y="${height - 10}" text-anchor="middle">${label}</text>`
-    }
-
-    // small circles, the browser shows the title when the mouse is over
-    let dots = ''
-    const step = Math.max(1, Math.floor(cumulative.length / 40))
-    for (let i = 0; i < cumulative.length; i += step) {
-        dots += `
-          <circle class="dot" cx="${xAt(i)}" cy="${yAt(cumulative[i])}" r="4">
-            <title>${formatXP(cumulative[i])} on ${formatDate(transactions[i].createdAt)}</title>
-          </circle>
-        `
+        dates += `<text x="${xAt(index)}" y="${height - 6}" text-anchor="middle" fill="#aaa" font-size="11">${shortDate(transactions[index].createdAt)}</text>`
     }
 
     svg.innerHTML = `
-        <defs>
-            <linearGradient id="xp-area" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="0%" stop-color="#6366f1" stop-opacity="0.55" />
-                <stop offset="100%" stop-color="#6366f1" stop-opacity="0" />
-            </linearGradient>
-        </defs>
-
         ${grid}
-        <polygon points="${area}" fill="url(#xp-area)" />
-        <polyline class="xp-line" points="${points}" />
-        ${dots}
+        <polyline points="${points}" fill="none" stroke="#d9e021" stroke-width="2" />
         ${dates}
     `
 }

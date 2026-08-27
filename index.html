@@ -5,30 +5,20 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>My Profile</title>
-    <meta name="theme-color" content="#0f1108">
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
     <link rel="stylesheet" href="style.css">
 </head>
 
 <body>
-    <!--  LOGIN  -->
+    <!-- LOGIN -->
     <section id="login-section">
         <form id="login-form">
-            <h1 class="brand">my<span>profile</span></h1>
-            <h2>Sign in</h2>
-            <p class="hint">Use your username or your email address</p>
+            <h1>My Profile</h1>
 
-            <div id="identifier-group">
-                <label for="identifier">Username or Email</label>
-                <input type="text" id="identifier" autocomplete="username" placeholder="john / john@mail.com">
-            </div>
+            <label for="identifier">Username or Email</label>
+            <input type="text" id="identifier" autocomplete="username">
 
-            <div id="password-group">
-                <label for="password">Password</label>
-                <input type="password" id="password" autocomplete="current-password" placeholder="••••••••">
-            </div>
+            <label for="password">Password</label>
+            <input type="password" id="password" autocomplete="current-password">
 
             <button id="login-btn" type="submit">Log in</button>
 
@@ -36,93 +26,48 @@
         </form>
     </section>
 
-    <!--  PROFILE  -->
+    <!-- PROFILE -->
     <section id="profile-section">
 
         <header class="topbar">
-            <div class="identity">
-                <img id="avatar" alt="Profile picture">
-                <div>
-                    <h2 id="login">…</h2>
-                    <p id="fullname" class="muted"></p>
-                </div>
+            <div id="avatar" class="avatar"></div>
+            <div>
+                <h2 id="login">…</h2>
+                <p id="fullname"></p>
             </div>
             <button id="logout-btn">Log out</button>
         </header>
 
-        <!-- key numbers -->
-        <div class="stats-row">
-            <div class="stat-card">
-                <div class="stat-label">Total XP</div>
-                <div class="stat-value" id="xp">…</div>
-                <div class="stat-sub" id="xp-raw"></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Level</div>
-                <div class="stat-value" id="level">…</div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Audit ratio</div>
-                <div class="stat-value" id="audit">…</div>
-                <div class="stat-sub" id="audit-sub"></div>
-            </div>
-            <div class="stat-card">
-                <div class="stat-label">Success rate</div>
-                <div class="stat-value" id="success-rate">…</div>
-                <div class="stat-sub" id="passfail"></div>
-            </div>
+        <div class="stats">
+            <div class="stat"><span>Total XP</span><b id="xp">…</b></div>
+            <div class="stat"><span>Level</span><b id="level">…</b></div>
+            <div class="stat"><span>Audit ratio</span><b id="audit">…</b></div>
+            <div class="stat"><span>Success rate</span><b id="success-rate">…</b></div>
         </div>
 
         <div class="grid">
 
-            <!-- identification -->
-            <article class="card">
+            <div class="card">
                 <h3>Identification</h3>
-                <dl class="info-list">
-                    <div><dt>User ID</dt><dd id="info-id">…</dd></div>
-                    <div><dt>Login</dt><dd id="info-login">…</dd></div>
-                    <div><dt>Full name</dt><dd id="info-name">…</dd></div>
-                    <div><dt>Email</dt><dd id="info-email">…</dd></div>
-                    <div><dt>Campus</dt><dd id="info-campus">…</dd></div>
-                    <div><dt>Member since</dt><dd id="info-since">…</dd></div>
-                </dl>
-            </article>
+                <p>User ID: <b id="info-id">…</b></p>
+                <p>Login: <b id="info-login">…</b></p>
+                <p>Full name: <b id="info-name">…</b></p>
+                <p>Email: <b id="info-email">…</b></p>
+                <p>Campus: <b id="info-campus">…</b></p>
+                <p>Member since: <b id="info-since">…</b></p>
+            </div>
 
-            <!-- graph 1 : pass / fail -->
-            <article class="card">
+            <div class="card">
                 <h3>Projects PASS / FAIL</h3>
-                <p class="muted small">Latest attempt on each project</p>
-                <svg id="passfail-graph" viewBox="0 0 260 220"></svg>
-            </article>
+                <svg id="passfail-graph" viewBox="0 0 200 160"></svg>
+            </div>
 
-            <!-- graph 2 : xp over time -->
-            <article class="card wide">
-                <h3>XP progression over time</h3>
-                <p class="muted small">Cumulative XP earned since your first project</p>
-                <div class="chart-scroll">
-                    <svg id="xp-graph" viewBox="0 0 640 240"></svg>
-                </div>
-            </article>
-
-            <!-- skills -->
-            <article class="card wide">
-                <h3>Best skills</h3>
-                <div id="skills" class="skills">
-                    <p class="muted small">Loading…</p>
-                </div>
-            </article>
-
-            <!-- recent activity -->
-            <article class="card wide">
-                <h3>Recent activity</h3>
-                <ul id="recent" class="list">
-                    <li class="muted small">Loading…</li>
-                </ul>
-            </article>
+            <div class="card wide">
+                <h3>XP over time</h3>
+                <svg id="xp-graph" viewBox="0 0 600 200"></svg>
+            </div>
 
         </div>
-
-        <footer class="foot muted small">Data queried live from the GraphQL endpoint</footer>
     </section>
 
     <script src="auth.js"></script>
