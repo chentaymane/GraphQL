@@ -1,9 +1,4 @@
-// the server rejected the token itself, not the query
-function isAuthError(message) {
-  return /jwt|jws|token|signature|unauthor|authenticat|invalid-headers/i.test(message)
-}
-
-// send a query to the graphql endpoint
+// send a query to the graphql endpoint, the jwt goes in as Bearer
 async function queryGraphQL(query, variables = {}) {
   // removed, modified or expired while the page was open
   const token = getValidToken()
@@ -27,20 +22,8 @@ async function queryGraphQL(query, variables = {}) {
     throw new Error('Session expired, please log in again')
   }
 
-  let result
-  try {
-    result = await response.json()
-  } catch {
-    // an auth failure can answer with something that is not json
-    throw new Error(`Request failed (${response.status})`)
-  }
-
-  if (result.errors) {
-    const message = result.errors[0].message
-    // the token is expired or gone, back to the login screen
-    if (isAuthError(message)) Logout()
-    throw new Error(message)
-  }
+  const result = await response.json()
+  if (result.errors) throw new Error(result.errors[0].message)
 
   return result.data
 }
@@ -62,30 +45,15 @@ function setText(id, value) {
   if (node) node.textContent = value
 }
 
-// initials right away, swapped for the real photo once (if) it loads
-function setAvatar(name, avatarUrl) {
-  const avatar = document.getElementById('avatar')
-  avatar.style.backgroundImage = ''
-  avatar.textContent = name.split(/\s+/).map(w => w[0]).slice(0, 2).join('').toUpperCase()
-
-  if (!avatarUrl) return
-  const img = new Image()
-  img.onload = () => {
-    // quoted through JSON so the url can't break out of the css value
-    avatar.style.backgroundImage = `url(${JSON.stringify(avatarUrl)})`
-    avatar.textContent = ''
-  }
-  img.src = avatarUrl
-}
-
 // ------------------------------------------------------------------------
 //  QUERIES
 
-// user identification and avatar
+// user identification.
+// NORMAL query: no arguments, the jwt already limits the rows to its owner
 async function getUserInfo() {
   const query = `
-  query ($userId: Int!) {
-    user(where: { id: { _eq: $userId } }) {
+  {
+    user {
       id
       login
       firstName
@@ -93,12 +61,11 @@ async function getUserInfo() {
       email
       campus
       createdAt
-      avatarUrl
     }
   }
   `
   try {
-    const data = await queryGraphQL(query, { userId: getUserIdFromToken() })
+    const data = await queryGraphQL(query)
     const user = data.user[0]
     if (!user) throw new Error('no user returned')
 
@@ -112,14 +79,13 @@ async function getUserInfo() {
     setText('info-email', user.email || '-')
     setText('info-campus', user.campus || '-')
     setText('info-since', formatDate(user.createdAt))
-
-    setAvatar(name || user.login, user.avatarUrl)
   } catch (err) {
     console.error('Failed to load user info:', err)
   }
 }
 
-// module level, scoped to the Module event
+// module level.
+// query with ARGUMENTS: filtered by type, user and event
 async function getLevel() {
   const query = `
   query ($userId: Int!) {
@@ -144,7 +110,8 @@ async function getLevel() {
   }
 }
 
-// total xp, and the xp graph
+// total xp, and the xp graph.
+// query with ARGUMENTS, ordered by date
 async function getXp() {
   const query = `
   query ($userId: Int!) {
@@ -173,7 +140,8 @@ async function getXp() {
   }
 }
 
-// projects: success rate and the pass/fail graph
+// projects: success rate and the pass/fail graph.
+// NESTED query: each progress row also brings its object
 async function getProjects() {
   const query = `
   query ($userId: Int!) {
@@ -214,7 +182,8 @@ async function getProjects() {
   }
 }
 
-// audit ratio: xp given over xp received
+// audit ratio: xp given over xp received.
+// two aliased aggregates in a single query
 async function getAuditRatio() {
   const query = `
   query ($userId: Int!) {

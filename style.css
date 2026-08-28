@@ -205,23 +205,6 @@ button:disabled {
     color: var(--muted);
 }
 
-.avatar {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    width: 46px;
-    height: 46px;
-    border-radius: 50%;
-    background-color: var(--surface-2);
-    background-size: cover;
-    background-position: center;
-    border: 1px solid var(--line-hover);
-    color: var(--accent);
-    font-size: 15px;
-    font-weight: 700;
-}
-
 #logout-btn {
     padding: 9px 15px;
     background: transparent;
