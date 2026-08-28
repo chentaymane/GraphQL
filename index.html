@@ -4,8 +4,9 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="color-scheme" content="dark">
     <title>My Profile</title>
-    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="style.css?v=2">
 </head>
 
 <body>
@@ -13,29 +14,30 @@
     <section id="login-section">
         <form id="login-form">
             <h1>My Profile</h1>
+            <p class="subtitle">Sign in with your Zone01 account</p>
 
             <label for="identifier">Username or Email</label>
-            <input type="text" id="identifier" autocomplete="username">
+            <input type="text" id="identifier" autocomplete="username" placeholder="you@example.com">
 
             <label for="password">Password</label>
-            <input type="password" id="password" autocomplete="current-password">
+            <input type="password" id="password" autocomplete="current-password" placeholder="••••••••">
 
             <button id="login-btn" type="submit">Log in</button>
 
-            <p id="error-msg"></p>
+            <p id="error-msg" role="alert"></p>
         </form>
     </section>
 
     <!-- PROFILE -->
-    <section id="profile-section">
+    <section id="profile-section" hidden>
 
         <header class="topbar">
             <div id="avatar" class="avatar"></div>
-            <div>
+            <div class="identity">
                 <h2 id="login">…</h2>
                 <p id="fullname"></p>
             </div>
-            <button id="logout-btn">Log out</button>
+            <button id="logout-btn" type="button">Log out</button>
         </header>
 
         <div class="stats">
@@ -49,30 +51,33 @@
 
             <div class="card">
                 <h3>Identification</h3>
-                <p>User ID: <b id="info-id">…</b></p>
-                <p>Login: <b id="info-login">…</b></p>
-                <p>Full name: <b id="info-name">…</b></p>
-                <p>Email: <b id="info-email">…</b></p>
-                <p>Campus: <b id="info-campus">…</b></p>
-                <p>Member since: <b id="info-since">…</b></p>
+                <dl class="info">
+                    <dt>User ID</dt><dd id="info-id">…</dd>
+                    <dt>Login</dt><dd id="info-login">…</dd>
+                    <dt>Full name</dt><dd id="info-name">…</dd>
+                    <dt>Email</dt><dd id="info-email">…</dd>
+                    <dt>Campus</dt><dd id="info-campus">…</dd>
+                    <dt>Member since</dt><dd id="info-since">…</dd>
+                </dl>
             </div>
 
             <div class="card">
                 <h3>Projects PASS / FAIL</h3>
-                <svg id="passfail-graph" viewBox="0 0 200 160"></svg>
+                <svg id="passfail-graph" viewBox="0 0 200 160" role="img"
+                    aria-label="Passed and failed projects"></svg>
             </div>
 
             <div class="card wide">
                 <h3>XP over time</h3>
-                <svg id="xp-graph" viewBox="0 0 600 200"></svg>
+                <svg id="xp-graph" viewBox="0 0 600 200" role="img" aria-label="XP earned over time"></svg>
             </div>
 
         </div>
     </section>
 
-    <script src="auth.js"></script>
-    <script src="querys.js"></script>
-    <script src="svg.js"></script>
+    <script src="auth.js?v=2"></script>
+    <script src="querys.js?v=2"></script>
+    <script src="svg.js?v=2"></script>
 </body>
 
 </html>

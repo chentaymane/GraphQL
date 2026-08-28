@@ -1,105 +1,82 @@
 const SIGNIN_URL = 'https://learn.zone01oujda.ma/api/auth/signin'
 const GRAPHQL_URL = 'https://learn.zone01oujda.ma/api/graphql-engine/v1/graphql'
 
-// btoa() only accepts latin1, so encode to UTF-8 bytes first
-function toBase64(str) {
-    const bytes = new TextEncoder().encode(str)
-    let binary = ''
-    bytes.forEach(b => binary += String.fromCharCode(b))
-    return btoa(binary)
-}
-
-// a jwt is base64URL, not base64
-function fromBase64Url(part) {
-    const base64 = part.replace(/-/g, '+').replace(/_/g, '/')
-    const padded = base64 + '='.repeat((4 - base64.length % 4) % 4)
-    const binary = atob(padded)
-    const bytes = Uint8Array.from(binary, c => c.charCodeAt(0))
-    return new TextDecoder().decode(bytes)
-}
-
 // ask the jwt with username/email and password
 async function Login() {
-    const email_user = document.getElementById('identifier').value.trim()
+    const email_user = document.getElementById('identifier').value
     const password = document.getElementById('password').value
 
-    if (!email_user || !password) {
-        throw new Error('Please fill in both fields')
-    }
+    // btoa() only accepts latin1, so encode to utf-8 bytes first
+    const credentials = btoa(String.fromCharCode(...new TextEncoder().encode(`${email_user}:${password}`)))
 
     const res = await fetch(SIGNIN_URL, {
         method: 'POST',
         headers: {
-            'Authorization': `Basic ${toBase64(`${email_user}:${password}`)}`
+            'Authorization': `Basic ${credentials}`
         }
     })
 
-    const body = await res.json().catch(() => null)
-
     if (!res.ok) {
-        throw new Error((body && body.error) || 'Invalid username/email or password')
+        throw new Error('Invalid username/email or password')
     }
 
-    const token = typeof body === 'string' ? body : body && (body.token || body.jwt)
-    if (!token) throw new Error('No token returned by the server')
-
+    const token = await res.json()
     localStorage.setItem('jwt', token)
     showProfile()
     loadProfile()
 }
 
-// the middle part of the jwt holds the user id and the expiry date
-function getTokenPayload() {
-    const token = localStorage.getItem('jwt')
-    const parts = (token || '').split('.')
-    if (parts.length !== 3) throw new Error('malformed token')
-    return JSON.parse(fromBase64Url(parts[1]))
+// the payload of the jwt, null when the token is missing, broken or expired
+function getPayload() {
+    try {
+        const token = localStorage.getItem('jwt')
+        // the middle part is the payload, in base64url
+        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
+        if (payload.exp * 1000 < Date.now()) return null
+        return payload
+    } catch {
+        return null
+    }
 }
 
+// the stored token, or null when it is not usable
+function getValidToken() {
+    return getPayload() ? localStorage.getItem('jwt') : null
+}
+
+// the id of the user is inside the jwt
 function getUserIdFromToken() {
-    const payload = getTokenPayload()
-    const claims = payload['https://hasura.io/jwt/claims'] || {}
-    const id = Number(payload.sub ?? claims['x-hasura-user-id'])
-    if (!Number.isFinite(id)) throw new Error('no user id in the token')
-    return id
+    const payload = getPayload()
+    if (!payload) {
+        Logout()
+        throw new Error('Session expired, please log in again')
+    }
+    return Number(payload.sub)
 }
 
 function showProfile() {
-    document.getElementById('login-section').style.display = 'none'
-    document.getElementById('profile-section').style.display = 'block'
+    document.getElementById('login-section').hidden = true
+    document.getElementById('profile-section').hidden = false
 }
 
-let loggingOut = false
 function Logout() {
-    if (loggingOut) return
-    loggingOut = true
     localStorage.removeItem('jwt')
     window.location.reload()
 }
 
-// already logged in, log out if the jwt is invalid or expired
+// already logged in, but the token can be broken or expired
 if (localStorage.getItem('jwt')) {
-    try {
-        if (getTokenPayload().exp * 1000 < Date.now()) throw new Error('expired')
-        getUserIdFromToken()
-        showProfile()
-    } catch {
-        Logout()
-    }
+    if (getValidToken()) showProfile()
+    else Logout()
 }
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {
     e.preventDefault()
-    const error = document.getElementById('error-msg')
-    const button = document.getElementById('login-btn')
-    error.textContent = ''
-    button.disabled = true
+    document.getElementById('error-msg').textContent = ''
     try {
         await Login()
     } catch (err) {
-        error.textContent = err.message
-    } finally {
-        button.disabled = false
+        document.getElementById('error-msg').textContent = err.message
     }
 })
 

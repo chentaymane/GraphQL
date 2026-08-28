@@ -1,6 +1,17 @@
+// the server rejected the token itself, not the query
+function isAuthError(message) {
+  return /jwt|jws|token|signature|unauthor|authenticat|invalid-headers/i.test(message)
+}
+
 // send a query to the graphql endpoint
 async function queryGraphQL(query, variables = {}) {
-  const token = localStorage.getItem('jwt')
+  // removed, modified or expired while the page was open
+  const token = getValidToken()
+  if (!token) {
+    Logout()
+    throw new Error('Session expired, please log in again')
+  }
+
   const response = await fetch(GRAPHQL_URL, {
     method: 'POST',
     headers: {
@@ -10,22 +21,28 @@ async function queryGraphQL(query, variables = {}) {
     body: JSON.stringify({ query, variables })
   })
 
-  const result = await response.json().catch(() => null)
-  const message = result && result.errors && result.errors[0].message
-
-  if (response.status === 401 || (message && /jwt/i.test(message))) {
+  // the signature is only checked server side, a forged token lands here
+  if (response.status === 401 || response.status === 403) {
     Logout()
     throw new Error('Session expired, please log in again')
   }
 
-  if (!response.ok || !result) throw new Error(`Request failed (${response.status})`)
-  if (message) throw new Error(message)
+  let result
+  try {
+    result = await response.json()
+  } catch {
+    // an auth failure can answer with something that is not json
+    throw new Error(`Request failed (${response.status})`)
+  }
+
+  if (result.errors) {
+    const message = result.errors[0].message
+    // the token is expired or gone, back to the login screen
+    if (isAuthError(message)) Logout()
+    throw new Error(message)
+  }
 
   return result.data
-}
-
-function userId() {
-  return getUserIdFromToken()
 }
 
 // 1000 xp -> 1 kB
@@ -54,7 +71,8 @@ function setAvatar(name, avatarUrl) {
   if (!avatarUrl) return
   const img = new Image()
   img.onload = () => {
-    avatar.style.backgroundImage = `url(${avatarUrl})`
+    // quoted through JSON so the url can't break out of the css value
+    avatar.style.backgroundImage = `url(${JSON.stringify(avatarUrl)})`
     avatar.textContent = ''
   }
   img.src = avatarUrl
@@ -80,7 +98,7 @@ async function getUserInfo() {
   }
   `
   try {
-    const data = await queryGraphQL(query, { userId: userId() })
+    const data = await queryGraphQL(query, { userId: getUserIdFromToken() })
     const user = data.user[0]
     if (!user) throw new Error('no user returned')
 
@@ -119,7 +137,7 @@ async function getLevel() {
   }
   `
   try {
-    const data = await queryGraphQL(query, { userId: userId() })
+    const data = await queryGraphQL(query, { userId: getUserIdFromToken() })
     setText('level', data.transaction.length ? data.transaction[0].amount : '-')
   } catch (err) {
     console.error('Failed to load level:', err)
@@ -144,7 +162,7 @@ async function getXp() {
   }
   `
   try {
-    const transactions = (await queryGraphQL(query, { userId: userId() })).transaction
+    const transactions = (await queryGraphQL(query, { userId: getUserIdFromToken() })).transaction
     const cumulative = calculateCumulative(transactions)
     const total = cumulative.length ? cumulative[cumulative.length - 1] : 0
 
@@ -175,7 +193,7 @@ async function getProjects() {
   }
   `
   try {
-    const rows = (await queryGraphQL(query, { userId: userId() })).progress
+    const rows = (await queryGraphQL(query, { userId: getUserIdFromToken() })).progress
     const graded = rows.filter(p => p.grade !== null)
 
     const seen = new Set()
@@ -209,7 +227,7 @@ async function getAuditRatio() {
   }
   `
   try {
-    const data = await queryGraphQL(query, { userId: userId() })
+    const data = await queryGraphQL(query, { userId: getUserIdFromToken() })
     const up = data.up.aggregate.sum.amount || 0
     const down = data.down.aggregate.sum.amount || 0
     const ratio = down ? up / down : null
@@ -228,6 +246,6 @@ function loadProfile() {
   getAuditRatio()
 }
 
-if (localStorage.getItem('jwt')) {
+if (getValidToken()) {
   window.addEventListener('load', loadProfile)
 }
