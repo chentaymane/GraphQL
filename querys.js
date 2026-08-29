@@ -1,10 +1,11 @@
-// send a query to the graphql endpoint, the jwt goes in as Bearer
-async function queryGraphQL(query, variables = {}) {
-  // removed, modified or expired while the page was open
-  const token = getValidToken()
+// send a query to the graphql endpoint, the jwt goes in as Bearer.
+// the server is the one that judges the token, so anything it refuses
+// means the token is gone, forged or expired: log out and start over
+async function queryGraphQL(query) {
+  const token = localStorage.getItem('jwt')
   if (!token) {
     Logout()
-    throw new Error('Session expired, please log in again')
+    throw new Error('Not logged in')
   }
 
   const response = await fetch(GRAPHQL_URL, {
@@ -13,17 +14,19 @@ async function queryGraphQL(query, variables = {}) {
       'Content-Type': 'application/json',
       'Authorization': `Bearer ${token}`
     },
-    body: JSON.stringify({ query, variables })
+    body: JSON.stringify({ query })
   })
 
-  // the signature is only checked server side, a forged token lands here
-  if (response.status === 401 || response.status === 403) {
+  if (!response.ok) {
     Logout()
     throw new Error('Session expired, please log in again')
   }
 
   const result = await response.json()
-  if (result.errors) throw new Error(result.errors[0].message)
+  if (result.errors) {
+    Logout()
+    throw new Error(result.errors[0].message)
+  }
 
   return result.data
 }
@@ -85,14 +88,13 @@ async function getUserInfo() {
 }
 
 // module level.
-// query with ARGUMENTS: filtered by type, user and event
+// query with ARGUMENTS: filtered by type and event, highest first
 async function getLevel() {
   const query = `
-  query ($userId: Int!) {
+  {
     transaction(
       where: {
         type: { _eq: "level" }
-        userId: { _eq: $userId }
         event: { object: { name: { _eq: "Module" } } }
       }
       order_by: { amount: desc }
@@ -103,7 +105,7 @@ async function getLevel() {
   }
   `
   try {
-    const data = await queryGraphQL(query, { userId: getUserIdFromToken() })
+    const data = await queryGraphQL(query)
     setText('level', data.transaction.length ? data.transaction[0].amount : '-')
   } catch (err) {
     console.error('Failed to load level:', err)
@@ -114,11 +116,10 @@ async function getLevel() {
 // query with ARGUMENTS, ordered by date
 async function getXp() {
   const query = `
-  query ($userId: Int!) {
+  {
     transaction(
       where: {
         type: { _eq: "xp" }
-        userId: { _eq: $userId }
         event: { object: { name: { _eq: "Module" } } }
       }
       order_by: { createdAt: asc }
@@ -129,7 +130,7 @@ async function getXp() {
   }
   `
   try {
-    const transactions = (await queryGraphQL(query, { userId: getUserIdFromToken() })).transaction
+    const transactions = (await queryGraphQL(query)).transaction
     const cumulative = calculateCumulative(transactions)
     const total = cumulative.length ? cumulative[cumulative.length - 1] : 0
 
@@ -144,10 +145,9 @@ async function getXp() {
 // NESTED query: each progress row also brings its object
 async function getProjects() {
   const query = `
-  query ($userId: Int!) {
+  {
     progress(
       where: {
-        userId: { _eq: $userId }
         object: { type: { _eq: "project" } }
         event: { object: { name: { _eq: "Module" } } }
       }
@@ -161,7 +161,7 @@ async function getProjects() {
   }
   `
   try {
-    const rows = (await queryGraphQL(query, { userId: getUserIdFromToken() })).progress
+    const rows = (await queryGraphQL(query)).progress
     const graded = rows.filter(p => p.grade !== null)
 
     const seen = new Set()
@@ -186,17 +186,17 @@ async function getProjects() {
 // two aliased aggregates in a single query
 async function getAuditRatio() {
   const query = `
-  query ($userId: Int!) {
-    up: transaction_aggregate(where: { type: { _eq: "up" }, userId: { _eq: $userId } }) {
+  {
+    up: transaction_aggregate(where: { type: { _eq: "up" } }) {
       aggregate { sum { amount } }
     }
-    down: transaction_aggregate(where: { type: { _eq: "down" }, userId: { _eq: $userId } }) {
+    down: transaction_aggregate(where: { type: { _eq: "down" } }) {
       aggregate { sum { amount } }
     }
   }
   `
   try {
-    const data = await queryGraphQL(query, { userId: getUserIdFromToken() })
+    const data = await queryGraphQL(query)
     const up = data.up.aggregate.sum.amount || 0
     const down = data.down.aggregate.sum.amount || 0
     const ratio = down ? up / down : null
@@ -215,6 +215,6 @@ function loadProfile() {
   getAuditRatio()
 }
 
-if (getValidToken()) {
+if (localStorage.getItem('jwt')) {
   window.addEventListener('load', loadProfile)
 }

@@ -26,34 +26,6 @@ async function Login() {
     loadProfile()
 }
 
-// the payload of the jwt, null when the token is missing, broken or expired
-function getPayload() {
-    try {
-        const token = localStorage.getItem('jwt')
-        // the middle part is the payload, in base64url
-        const payload = JSON.parse(atob(token.split('.')[1].replace(/-/g, '+').replace(/_/g, '/')))
-        if (payload.exp * 1000 < Date.now()) return null
-        return payload
-    } catch {
-        return null
-    }
-}
-
-// the stored token, or null when it is not usable
-function getValidToken() {
-    return getPayload() ? localStorage.getItem('jwt') : null
-}
-
-// the id of the user is inside the jwt
-function getUserIdFromToken() {
-    const payload = getPayload()
-    if (!payload) {
-        Logout()
-        throw new Error('Session expired, please log in again')
-    }
-    return Number(payload.sub)
-}
-
 function showProfile() {
     document.getElementById('login-section').hidden = true
     document.getElementById('profile-section').hidden = false
@@ -64,10 +36,10 @@ function Logout() {
     window.location.reload()
 }
 
-// already logged in, but the token can be broken or expired
+// there is a token, so show the profile.
+// if it turns out to be expired or broken the first query logs us back out
 if (localStorage.getItem('jwt')) {
-    if (getValidToken()) showProfile()
-    else Logout()
+    showProfile()
 }
 
 document.getElementById('login-form').addEventListener('submit', async (e) => {

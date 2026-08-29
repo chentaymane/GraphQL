@@ -35,61 +35,42 @@ function calculateCumulative(transactions) {
     return cumulative
 }
 
-// graph 2: xp over time, a plain line
+// graph 2: xp over time, a line going up
 function drawXpOverTimeGraph(cumulative, transactions) {
     const svg = document.getElementById('xp-graph')
-    const width = 600
-    const height = 200
-    const padLeft = 52
-    const padBottom = 24
-    const top = 10
 
-    const max = cumulative.reduce((m, v) => v > m ? v : m, 0)
+    // the four edges of the drawing area, inside the 600 x 200 viewBox
+    const left = 52, right = 590, top = 10, bottom = 176
 
+    const max = Math.max(...cumulative)
     if (cumulative.length < 2 || max <= 0) {
         svg.innerHTML = `<text class="empty" x="300" y="100" text-anchor="middle">Not enough data yet</text>`
         return
     }
 
-    const plotW = width - padLeft - 10
-    const plotH = height - top - padBottom
-    const baseline = top + plotH
-
-    const xAt = i => padLeft + (i / (cumulative.length - 1)) * plotW
-    const yAt = v => baseline - (v / max) * plotH
+    // an index and an xp value become a point inside that area
+    const xAt = i => left + (i / (cumulative.length - 1)) * (right - left)
+    const yAt = v => bottom - (v / max) * (bottom - top)
 
     const points = cumulative.map((v, i) => `${xAt(i)},${yAt(v)}`).join(' ')
-    const area = `${padLeft},${baseline} ${points} ${xAt(cumulative.length - 1)},${baseline}`
 
-    // a few xp labels on the left, each with its gridline
-    let grid = ''
+    // 5 xp labels up the left side, each with its line across
+    let rows = ''
     for (let i = 0; i <= 4; i++) {
-        const value = (max / 4) * i
-        const y = yAt(value)
-        grid += `
-          <line class="grid-line" x1="${padLeft}" y1="${y}" x2="${width - 10}" y2="${y}" />
-          <text class="tick" x="${padLeft - 10}" y="${y + 4}" text-anchor="end">${formatXP(Math.round(value))}</text>
-        `
+        const y = yAt(max * i / 4)
+        rows += `<line class="grid-line" x1="${left}" y1="${y}" x2="${right}" y2="${y}" />
+                 <text class="tick" x="${left - 10}" y="${y + 4}" text-anchor="end">${formatXP(Math.round(max * i / 4))}</text>`
     }
 
-    // a few dates under the graph
+    // 5 dates along the bottom, the last one pulled in so it is not cut off
     let dates = ''
     for (let i = 0; i <= 4; i++) {
-        const index = Math.round((transactions.length - 1) * (i / 4))
-        // the first and last labels lean inwards so they stay inside the viewBox
-        const anchor = i === 0 ? 'start' : i === 4 ? 'end' : 'middle'
-        dates += `<text class="tick" x="${xAt(index)}" y="${height - 5}" text-anchor="${anchor}">${shortDate(transactions[index].createdAt)}</text>`
+        const index = Math.round((transactions.length - 1) * i / 4)
+        dates += `<text class="tick" x="${xAt(index)}" y="195" text-anchor="${i === 4 ? 'end' : 'middle'}">${shortDate(transactions[index].createdAt)}</text>`
     }
 
     svg.innerHTML = `
-        <defs>
-          <linearGradient id="xp-fill" x1="0" y1="0" x2="0" y2="1">
-            <stop class="xp-stop-top" offset="0%" />
-            <stop class="xp-stop-bottom" offset="100%" />
-          </linearGradient>
-        </defs>
-        ${grid}
-        <polygon class="xp-area" points="${area}" fill="url(#xp-fill)" />
+        ${rows}
         <polyline class="xp-line" points="${points}" />
         ${dates}
     `

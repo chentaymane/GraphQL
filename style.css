@@ -401,10 +401,6 @@ svg text {
     fill: var(--muted);
 }
 
-.xp-area {
-    stroke: none;
-}
-
 .xp-line {
     fill: none;
     stroke: var(--accent);
@@ -412,16 +408,6 @@ svg text {
     vector-effect: non-scaling-stroke;
     stroke-linecap: round;
     stroke-linejoin: round;
-}
-
-.xp-stop-top {
-    stop-color: var(--accent);
-    stop-opacity: .28;
-}
-
-.xp-stop-bottom {
-    stop-color: var(--accent);
-    stop-opacity: 0;
 }
 
 .empty {
