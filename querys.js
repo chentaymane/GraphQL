@@ -31,11 +31,18 @@ async function queryGraphQL(query) {
   return result.data
 }
 
-// 1000 xp -> 1 kB
+// 1000 xp -> 1 kB, written the way the platform writes it:
+// MB keeps two cut decimals, kB is a whole number: 3.69 MB, 665 kB, 250 B
 function formatXP(xp) {
-  if (xp >= 1000000) return (xp / 1000000).toFixed(2) + ' MB'
+  if (xp >= 1000000) return cutMB(xp) + ' MB'
   if (xp >= 1000) return Math.round(xp / 1000) + ' kB'
-  return xp + ' B'
+  return Math.round(xp) + ' B'
+}
+
+// two decimals, CUT and not rounded, no trailing zeros:
+// 3 699 000 is 3.69 MB, never 3.7 MB
+function cutMB(xp) {
+  return String(Math.floor(xp / 10000) / 100)
 }
 
 function formatDate(date) {
@@ -112,7 +119,7 @@ async function getLevel() {
   }
 }
 
-// total xp, and the xp graph.
+// total xp.
 // query with ARGUMENTS, ordered by date
 async function getXp() {
   const query = `
@@ -131,11 +138,9 @@ async function getXp() {
   `
   try {
     const transactions = (await queryGraphQL(query)).transaction
-    const cumulative = calculateCumulative(transactions)
-    const total = cumulative.length ? cumulative[cumulative.length - 1] : 0
+    const total = transactions.reduce((sum, t) => sum + t.amount, 0)
 
     setText('xp', formatXP(total))
-    drawXpOverTimeGraph(cumulative, transactions)
   } catch (err) {
     console.error('Failed to load XP:', err)
   }
@@ -183,10 +188,16 @@ async function getProjects() {
 }
 
 // audit ratio: xp given over xp received.
-// two aliased aggregates in a single query
+// the user row already holds the totals the platform itself shows,
+// the two aliased aggregates in the same query are the fallback
 async function getAuditRatio() {
   const query = `
   {
+    user {
+      auditRatio
+      totalUp
+      totalDown
+    }
     up: transaction_aggregate(where: { type: { _eq: "up" } }) {
       aggregate { sum { amount } }
     }
@@ -197,10 +208,16 @@ async function getAuditRatio() {
   `
   try {
     const data = await queryGraphQL(query)
-    const up = data.up.aggregate.sum.amount || 0
-    const down = data.down.aggregate.sum.amount || 0
-    const ratio = down ? up / down : null
+    const me = data.user[0] || {}
+
+    // prefer the platform totals so the page shows the same MB as the profile,
+    // ?? and not ||, a real total of 0 must not fall back to the aggregate
+    const up = me.totalUp ?? data.up.aggregate.sum.amount ?? 0
+    const down = me.totalDown ?? data.down.aggregate.sum.amount ?? 0
+    const ratio = me.auditRatio ?? (down ? up / down : null)
+
     setText('audit', ratio === null ? '-' : ratio.toFixed(1))
+    drawAuditGraph(up, down)
   } catch (err) {
     console.error('Failed to load audit ratio:', err)
   }

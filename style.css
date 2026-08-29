@@ -340,29 +340,14 @@ svg text {
     fill: var(--text);
 }
 
-/* the bar chart keeps its natural size, the line chart fills the card */
+/* the ring keeps its natural size, the audit bars fill the wide card */
 #passfail-graph {
     height: 210px;
 }
 
-#xp-graph {
+#audit-graph {
     height: auto;
     margin-top: 4px;
-}
-
-.axis {
-    stroke: var(--line-hover);
-    vector-effect: non-scaling-stroke;
-}
-
-.grid-line {
-    stroke: var(--line);
-    vector-effect: non-scaling-stroke;
-}
-
-.tick {
-    font-size: 9px;
-    fill: var(--muted);
 }
 
 .bar {
@@ -370,16 +355,32 @@ svg text {
     transition: opacity var(--ease);
 }
 
+.ring {
+    fill: none;
+    stroke-width: 20;
+}
+
+.ring.pass {
+    stroke: var(--pass);
+}
+
+.ring.fail {
+    stroke: var(--fail);
+}
+
+.ring-value {
+    font-size: 28px;
+    font-weight: 700;
+}
+
+.ring-sub {
+    font-size: 10px;
+    letter-spacing: .12em;
+    fill: var(--muted);
+}
+
 .bar:hover {
     opacity: .8;
-}
-
-.bar.pass {
-    fill: var(--pass);
-}
-
-.bar.fail {
-    fill: var(--fail);
 }
 
 .bar-value {
@@ -401,13 +402,20 @@ svg text {
     fill: var(--muted);
 }
 
-.xp-line {
-    fill: none;
-    stroke: var(--accent);
-    stroke-width: 2;
-    vector-effect: non-scaling-stroke;
-    stroke-linecap: round;
-    stroke-linejoin: round;
+.bar.up {
+    fill: var(--accent);
+}
+
+.bar.down {
+    fill: var(--muted);
+}
+
+.bar-value.up {
+    fill: var(--accent);
+}
+
+.bar-value.down {
+    fill: var(--muted);
 }
 
 .empty {
@@ -428,11 +436,6 @@ svg text {
 
     .stat b {
         font-size: 22px;
-    }
-
-    /* the line chart shrinks with the card, keep its labels readable */
-    .tick {
-        font-size: 12px;
     }
 }
 
